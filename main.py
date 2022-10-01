@@ -12,7 +12,9 @@ def hello_world():  # put application's code here
 # @app.route('/second')
 # def hello_world2():  # put application's code here
 #     return "<h1>0 You are now in another page</h1>", 500
-
+@app.route('/api/v1/show')
+def show_number():
+    return "4", 200
 
 if __name__ == '__main__':
     app.run(debug=True)
