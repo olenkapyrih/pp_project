@@ -1,0 +1,601 @@
+openapi: 3.0.3
+info:
+  title: Swagger Playlist Creator - OpenAPI 3.0
+  version: 1.0.11
+servers:
+  - url: https://playlist.swagger.io/api/v3
+tags:
+  - name: user
+    description: User`s profile
+  - name: playlist
+    description: Your saved music
+  - name: song
+    description: Operations about user
+
+
+paths:
+  /playlist:
+    post:
+      tags:
+        - playlist
+      operationId: createPlaylist
+      requestBody:
+        description: Show user object
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Playlist'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/Playlist'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Playlist'
+      # requestBody:
+      #   content:
+      #     application/json:
+      #       schema:
+      #         $ref: '#/components/schemas/Playlist'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+        # '403': 
+        #   description: Access denied
+        '405':
+          description: Invalid input
+      security:
+        - user_auth:
+            - write:users
+            - read:users
+  /playlist/{id}:
+    delete:
+      tags:
+        - playlist
+      operationId: deletePlaylist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        
+      responses:
+        '200':
+          description: Successful operation
+          # content:
+          #   application/json:
+          #     schema:
+          #       $ref: '#/components/schemas/Playlist'          
+          #   application/xml:
+          #     schema:
+          #       $ref: '#/components/schemas/Playlist'
+        '400':
+          description: Invalid ID supplied
+        '403':
+          description: Access denied
+      security:
+        - user_auth:
+            - write:users
+            - read:users
+    put:
+      tags:
+        - playlist
+      operationId: updatePlaylist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Playlist'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/Playlist'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Playlist'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+        '400':
+          description: Invalid ID supplied
+        '403':
+          description: Access denied  
+        '404':
+          description: Palylist not found
+        '405':
+          description: Invalid input
+      security:
+        - user_auth:
+            - write:playlists
+            - read:playlists 
+  /playlist/findByUser:
+    get:
+      tags:
+        - playlist
+      operationId: findPlaylistByUser
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          explode: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Playlist'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Playlist'
+        '400':
+          description: Invalid UserId
+        # '403':
+        #   description: Access denied  
+  /playlist/findPublic:
+    get:
+      tags:
+        - playlist
+      operationId: findPlaylistByName
+      parameters:
+      - name: playlistName
+        in: query
+        required: false
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Playlist'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Playlist'
+        # '400':
+        #   description: Invalid UserId
+        # '403':
+        #   description: Access denied          
+  /song:
+    post:
+      tags:
+        - song
+      operationId: addSong
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Song'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/Song'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Song'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Song'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Song'
+        '405':
+          description: Invalid input
+      # security:
+      #   - song_auth:
+      #       - write:songs
+      #       - read:songs
+  /song/findByName:
+    get:
+      tags:
+        - song
+      operationId: findSongsByName
+      parameters:
+        - name: status
+          in: query
+          required: false
+          explode: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Song'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Song'
+  /song/findByArtist:
+    get:
+      tags:
+        - song
+      operationId: findSongsByArtist
+      parameters:
+        - name: name
+          in: query
+          required: false
+          explode: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Song'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Song'
+        # '400':
+        #   description: Invalid tag value
+  /song/{songID}:
+    delete:
+      tags:
+        - song
+      summary: Deletes a song
+      description: delete a song
+      operationId: deleteSong
+      parameters:
+        - name: api_key
+          in: header
+          description: ''
+          required: false
+          schema:
+            type: string
+        - name: songID
+          in: path
+          description: Song id to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '400':
+          description: Invalid songID
+      security:
+        - user_auth:
+            - write:songs
+            - read:songs
+  /user:
+    post:
+      tags:
+        - user
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Empty fields
+        '401':
+          description: User with such username or email already exists 
+  /user/login:
+    get:
+      tags:
+        - user
+      # summary: Logs user into the system
+      description: ''
+      operationId: loginUser
+      parameters:
+        - name: username
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: password
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            X-Rate-Limit:
+              description: calls per hour allowed by the user
+              schema:
+                type: integer
+                format: int32
+            X-Expires-After:
+              description: date in UTC when token expires
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/xml:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Invalid username/password supplied
+  /user/logout:
+    get:
+      tags:
+        - user
+      description: ''
+      operationId: logoutUser
+      parameters: []
+      responses:
+        default:
+          description: successful operation
+  /user/{username}:
+    put:
+      tags:
+        - user
+      description: This can only be done by the logged in user.
+      operationId: updateUser
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: successful operation
+        '400':
+          description: Invalid username supplied
+        '403':
+          description: Access denied
+        '405':
+          description: Invalid input
+      
+    delete:
+      tags:
+        - user
+      operationId: deleteUser
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+        '400':
+          description: Invalid username supplied
+        '403':
+          description: Access denied
+      security:
+        - user_auth:
+            - write:songs
+            - read:songs
+
+components:
+  schemas:
+  
+    User:
+      required:
+        - username
+        - password
+        - email
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 10
+        role:
+         type: string
+         enum:
+            - admin
+            - customer
+        username:
+          type: string
+          example: theUser
+        firstName:
+          type: string
+          example: John
+        lastName:
+          type: string
+          example: James
+        email:
+          type: string
+          example: john@email.com
+        password:
+          type: string
+          example: '12345'
+      xml:
+        name: user
+        
+    Playlist:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: My Playlist
+        userId:
+          $ref:  '#/components/schemas/User'
+        genre:
+          type: string
+          example: rock
+        songs:
+          type: array
+          xml:
+            name: songs
+            wrapped: true
+          items:
+            $ref: '#/components/schemas/Song'
+        access_status: 
+          type: string
+          enum:
+          - private
+          - public
+      xml:
+        name: playlist  
+        
+    Song:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 10
+        name:
+          type: string
+          example: Sorry
+        album:
+          type: string
+        genre:
+          type: string
+          example: jazz
+        tags:
+          type: array
+          xml:
+            wrapped: true
+          items:
+            $ref: '#/components/schemas/Song'
+        artist:
+          type: array
+          xml:
+            wrapped: true
+          items:
+            $ref: '#/components/schemas/Song'
+        creationDate:
+          type: string
+          format: date
+          example: '2022-02-02'
+      xml:
+        name: song
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        type:
+          type: string
+        message:
+          type: string
+      xml:
+        name: '##default'
+  requestBodies:
+    Song:
+      description: Song object that needs to be added to the playlist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Song'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Song'
+    UserArray:
+      description: List of user object
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/User'
+  securitySchemes:
+    user_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://playlist.swagger.io/oauth/authorize
+          scopes:
+            write:users: modify songs in your account
+            read:users: read your songs
+    playlist_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://playlist.swagger.io/oauth/authorize
+          scopes:
+            write:playlists: modify playlists in your account
+            read:playlists: read your playlists
+    song_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://playlist.swagger.io/oauth/authorize
+          scopes:
+            write:songs: modify songs in your account
+            read:songs: read your songs
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
