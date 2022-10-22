@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Swagger Agency - OpenAPI 3.0
+  title: Swagger Travel Agency - OpenAPI 3.0
   # description: |-
   #   This is a sample Pet Store Server based on the OpenAPI 3.0 specification.  You can find out more about
   #   Swagger at [https://swagger.io](https://swagger.io). In the third iteration of the pet store, we've switched to the design first approach!
@@ -18,7 +18,7 @@ servers:
 tags:
   - name: tour
     description: Everything about your Tours
-  - name: agency
+  - name: order
     description: Access to Tour agency orders
   - name: user
     description: Operations about user
@@ -56,13 +56,13 @@ paths:
         '400':
           description: Invalid ID supplied
         '404':
-          description: Pet not found
+          description: Tour not found
         '405':
           description: Validation exception
       security:
-        - petstore_auth:
-            - write:pets
-            - read:pets
+        - agency_auth:
+            - write:tours
+            - read:tours
     post:
       tags:
         - tour
@@ -74,13 +74,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Tour'
+              $ref: '#/components/schemas/NewTour'
           application/xml:
             schema:
-              $ref: '#/components/schemas/Tour'
+              $ref: '#/components/schemas/NewTour'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Tour'
+              $ref: '#/components/schemas/NewTour'
         required: true
       responses:
         '200':
@@ -92,10 +92,11 @@ paths:
             application/xml:
               schema:
                 $ref: '#/components/schemas/Tour'
+            
         '405':
           description: Invalid input
       security:
-        - petstore_auth:
+        - agency_auth:
             - write:tours
             - read:tours
   /tour/findByStatus:
@@ -133,23 +134,13 @@ paths:
                   $ref: '#/components/schemas/Tour'
         '400':
           description: Invalid status value
-  /tour/findByAgency:
+  /tour/all:
     get:
       tags:
         - tour
-      summary: Finds Tours by status
-      description: Multiple status values can be provided with comma separated strings
-      operationId: findToursByAgency
-      parameters:
-        - name: status
-          in: query
-          description: Status values that need to be considered for filter
-          required: false
-          explode: true
-          schema:
-            type: string
-            default: available
-            
+      summary: Returns tour inventories 
+      description: Returns a map of status codes to quantities
+      operationId: getOrders
       responses:
         '200':
           description: successful operation
@@ -158,15 +149,13 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Tour'          
+                  $ref: '#/components/schemas/Tour'
             application/xml:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/Tour'
-        '400':
-          description: Invalid status value
-      
+        
   /tour/{tourId}:
     get:
       tags:
@@ -200,7 +189,7 @@ paths:
           description: access denied
       security:
         - api_key: []
-        - petstore_auth:
+        - agency_auth:
             - write:tours
             - read:tours
     
@@ -223,37 +212,40 @@ paths:
         '400':
           description: Invalid tour value
       security:
-        - petstore_auth:
+        - agency_auth:
             - write:tours
             - read:tours
-  /agency/inventory:
+  
+      
+  /order/all:
     get:
       tags:
-        - agency
-      summary: Returns tour inventories by status
+        - order
+      summary: Returns tour inventories 
       description: Returns a map of status codes to quantities
-      operationId: getInventory
+      operationId: getOrder
       responses:
         '200':
           description: successful operation
           content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/Tour'
-              application/xml:
-                schema:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/Tour'
-        '404':
-          description: Agency not found
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        
+      security:
+        - api_key: []
       
-  /agency/order:
+  /order:
     post:
       tags:
-        - agency
+        - order
       summary: Place an order for a tour
       description: Place a new order in the agency
       operationId: placeOrder
@@ -261,13 +253,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Order'
+              $ref: '#/components/schemas/NewOrder'
           application/xml:
             schema:
-              $ref: '#/components/schemas/Order'
+              $ref: '#/components/schemas/NewOrder'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Order'
+              $ref: '#/components/schemas/NewOrder'
       responses:
         '200':
           description: successful operation
@@ -275,14 +267,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Order'
-        '405':
-          description: Invalid input
+      #   '405':
+      #     description: Invalid input
       security:
         - api_key: []
-  /agency/order/{orderId}:
+  /order/{orderId}:
     get:
       tags:
-        - agency
+        - order
       summary: Find purchase order by ID
       description: For valid response try integer IDs with value <= 5 or > 10. Other values will generate exceptions.
       operationId: getOrderById
@@ -312,7 +304,7 @@ paths:
         - api_key: []
     delete:
       tags:
-        - agency
+        - order
       summary: Delete purchase order by ID
       description: For valid response try integer IDs with value < 1000. Anything above 1000 or nonintegers will generate API errors
       operationId: deleteOrder
@@ -343,13 +335,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
+              $ref: '#/components/schemas/NewUser'
           application/xml:
             schema:
-              $ref: '#/components/schemas/User'
+              $ref: '#/components/schemas/NewUser'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/User'
+              $ref: '#/components/schemas/NewUser'
       responses:
         '200':
           description: successful operation
@@ -477,8 +469,17 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
       responses:
-        default:
-          description: successful operation
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
       security:
         - api_key: []
     delete:
@@ -538,6 +539,33 @@ components:
             $ref: '#/components/schemas/User'
       xml:
         name: order
+    NewOrder:
+      type: object
+      properties:
+        
+        quantity:
+          type: integer
+          format: int32
+          example: 7
+        orderDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          description: Order Status
+          example: approved
+          enum:
+            - placed
+            - approved
+            - recived
+        complete:
+          type: boolean
+        idTour:
+            $ref: '#/components/schemas/Tour'
+        idUser:
+            $ref: '#/components/schemas/User'
+      xml:
+        name: neworder
    
     User:
       type: object
@@ -577,6 +605,45 @@ components:
          
       xml:
         name: user
+    NewUser:
+      type: object
+      properties:
+        role:
+         type: string
+         enum:
+            - admin
+            - customer
+        
+        username:
+          type: string
+          example: theUser
+        firstName:
+          type: string
+          example: John
+        lastName:
+          type: string
+          example: James
+        email:
+          type: string
+          example: john@email.com
+        password:
+          type: string
+          example: '12345'
+        phone:
+          type: string
+          example: '12345'
+        userStatus:
+          type: integer
+          description: User Status
+          format: int32
+          example: 1
+         
+      xml:
+        name: newuser
+   
+        
+         
+      
     Tour:
       required:
         - name
@@ -607,8 +674,38 @@ components:
           enum:
             - available
             - sold
+        
       xml:
         name: tour
+    NewTour:
+      required:
+        - name
+        - photoUrls
+      type: object
+      properties:
+       
+        name:
+          type: string
+          example: New Zeland tour
+        value:
+          type: integer
+          example: 400
+        photoUrls:
+          type: array
+          xml:
+            wrapped: true
+          items:
+            type: string
+            xml:
+              name: photoUrl
+        status:
+          type: string
+          description: tour status in the agency
+          enum:
+            - available
+            - sold
+      xml:
+        name: newtour   
    
   requestBodies:
     Tour:
@@ -629,7 +726,7 @@ components:
             items:
               $ref: '#/components/schemas/User'
   securitySchemes:
-    petstore_auth:
+    agency_auth:
       type: oauth2
       flows:
         implicit:
