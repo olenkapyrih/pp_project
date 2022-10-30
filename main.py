@@ -1,8 +1,6 @@
 from flask import Flask
 from waitress import serve
-
-
-app = Flask(__name__)
+from routes import app
 
 
 @app.route('/api/v1/hello-world-11')
