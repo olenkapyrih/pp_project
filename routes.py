@@ -1,75 +1,96 @@
-from flask import request, Flask
+from flask import request, Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from models import *
 import json
+from flask_bcrypt import generate_password_hash
 
 app = Flask(__name__)
-
 from flask_marshmallow import *
-from marshmallow import *
-# app = Flask(__name__)
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:2004@localhost:3306/ppdb'
-# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Base.metadata.create_all(bind=engine)
+from marshmallow import Schema, fields, post_load, ValidationError, validate
+
 Session = sessionmaker(bind=engine)
 session = Session()
-
-
-# ma = Marshmallow(app)
-# db = SQLAlchemy(app)
 '''queries dealing with tours table'''
 
 
 @app.route('/tour', methods=['PUT'])
 def update_tour():
-    args = request.args
-    tour_id = args.get("tour_id")
-    args = request.get_json()
-    session.query(Tour).filter(Tour.id == tour_id).update(args)
-    session.commit()
-    tour = session.query(Tour).filter(Tour.id == tour_id)[0].to_dict()
-    return tour
+    arg = request.args
+    try:
+        tour_id = arg.get("tour_id")
+        if not validate_entry_id(Tour, tour_id):
+            return {"message": "Tour with such id does not exist"}, 400
+        else:
+            args = request.get_json()
+            tour_schema = TourSchema()
+            updated_tour = tour_schema.load(args, session=session)
+            if 100 < updated_tour.price > 100000:
+                raise ValidationError
+            session.query(Tour).filter(Tour.id == tour_id).update(args)
+            session.commit()
+            new_tour = session.query(Tour).filter(Tour.id == tour_id).one().to_dict()
+            return tour_schema.dump(new_tour)
+    except ValidationError:
+        return {"message": "Not correct data provided"}, 405
 
 
 @app.route('/tour', methods=['POST'])
 def create_tour():
     args = request.get_json()
-    new_tour = Tour(**args)
-    session.add(new_tour)
-    session.commit()
-    return new_tour.to_dict()
+    try:
+        tour_schema = TourSchema()
+        tour = tour_schema.load(args, session=session)
+        session.add(tour)
+        session.commit()
+        return tour_schema.dump(tour)
+    except ValidationError as err:
+        return str(err)
 
 
 @app.route('/tour/findAll', methods=['GET'])
 def find_all_tours():
     tours = session.query(Tour)
-    return json.dumps([i.to_dict() for i in tours])
+    return json.dumps([i.to_dict() for i in tours]), 200
 
 
 @app.route('/tour/findByID', methods=['GET'])
 def find_tour_by_id():
     args = request.args
     tour_id = args.get('tour_id')
-    tours = session.query(Tour).filter(Tour.id == tour_id)
-    return json.dumps([i.to_dict() for i in tours])
+    if validate_entry_id(Tour, tour_id):
+        tour = session.query(Tour).filter(Tour.id == tour_id).first()
+        tour_schema = TourSchema()
+        return tour_schema.dump(tour), 200
+    return {"message": "Tour with such id does not exist"}, 404
 
 
 @app.route('/tour/findByStatus', methods=['GET'])
 def find_tour_by_status():
     args = request.args
     tour_status = args.get('tour_status')
-    tours = session.query(Tour).filter(Tour.is_available == tour_status)
-    return json.dumps([i.to_dict() for i in tours])
+    if tour_status != '0' and tour_status != "1":
+        return {"message": "Not correct status"}, 404
+    else:
+        tours = session.query(Tour).filter(Tour.is_available == tour_status)
+        tour_schema = TourSchema()
+        return f"{[tour_schema.dump(i) for i in tours]}", 200
 
 
 @app.route('/tour', methods=['DELETE'])
 def delete_tour():
     args = request.args
     tour_id = args.get('tour_id')
-    tour = session.query(Tour).filter(Tour.id == tour_id)[0].to_dict()
-    session.query(Tour).filter(Tour.id == tour_id).delete()
-    session.commit()
-    return tour
+    try:
+        if not validate_entry_id(Tour, tour_id):
+            return {"message": "Tour with such id does not exist"}, 400
+        # session.query(Order).filter(Order.tour_id == Tour.id, Tour.id == tour_id).delete()
+        session.query(Tour).filter(Tour.id == tour_id).delete()
+        session.commit()
+        return {"message": "Tour deleted successfully"}, 200
+    except ValidationError:
+        return {"message": "Tour with such id does not exist"}, 404
+
+
 
 
 '''queries dealing with orders'''
@@ -142,6 +163,7 @@ def delete_order():
 def create_user():
     args = request.get_json()
     new_user = User(**args)
+    new_user.password = generate_password_hash(new_user.password)
     session.add(new_user)
     session.commit()
     return new_user.to_dict()
@@ -175,6 +197,14 @@ def find_user_by_username():
     users = session.query(User).filter(User.username == username1)
     return json.dumps([i.to_dict() for i in users])
 
+
+# @app.route('/user/findUserByID', methods=['GET'])
+# def find_user_by_ID():
+#     args = request.args
+#     try:
+#         user_id = args.get('user_id')
+#         users = session.query(User).filter(User.id == user_id)
+#     return json.dumps([i.to_dict() for i in users])
 
 @app.route('/user/findAll', methods=['GET'])
 def find_all_users():

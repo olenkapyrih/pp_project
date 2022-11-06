@@ -1,10 +1,12 @@
 from uuid import UUID
-
+# from flask import fields
 from flask_marshmallow.sqla import SQLAlchemyAutoSchema
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base, scoped_session
 from sqlalchemy_serializer import SerializerMixin
 from marshmallow_sqlalchemy import *
+from marshmallow import fields, validate
+from validators import *
 
 engine = create_engine("mysql+pymysql://root:2004@localhost:3306/ppdb")
 SessionFactory = sessionmaker(bind=engine)
@@ -19,10 +21,30 @@ class CustomSerializerMixin(SerializerMixin):
 	)
 
 
+def validate_entry_id(entry, entry_id):
+	if Session.query(entry).filter(entry.id == entry_id).count() == 0:
+		return False
+	return True
+
+
+# def validate_tour_status(num):
+# 	if num != "1" and num != "0":
+# 		return False
+# 	return True
 class User(Base, CustomSerializerMixin):
 	__tablename__ = "user"
 
-	serialize_only = {'id', 'is_admin', 'firstname', 'lastname', 'email', 'password', 'phone'}
+	# def __init__(self, id, is_admin, firstname, username, lastname, email, password, phone):
+	# 	self.id = id
+	# 	self.is_admin = is_admin
+	# 	self.firstname = firstname
+	# 	self.username = username
+	# 	self.lastname = lastname
+	# 	self.email = email
+	# 	self.password = password
+	# 	self.phone = phone
+
+	serialize_only = {'id', 'is_admin', 'firstname', 'lastname', 'email', 'phone'}
 
 	id = Column('id', Integer, primary_key=True, autoincrement=True)
 	is_admin = Column('is_admin', Boolean, nullable=False)
@@ -30,7 +52,7 @@ class User(Base, CustomSerializerMixin):
 	username = Column('username', String(20), nullable=False)
 	lastname = Column('lastname', String(45), nullable=False)
 	email = Column('email', String(128), nullable=False)
-	password = Column('password', String(45), nullable=False)
+	password = Column('password', String(200), nullable=False)
 	phone = Column('phone', String(12), nullable=False)
 
 
@@ -59,10 +81,39 @@ class Tour(Base, CustomSerializerMixin):
 	is_available = Column('is_available', Boolean, nullable=False)
 
 
-# class TourSchema(SQLAlchemyAutoSchema):
-# 	model = Tour
-# 	include_relationships = True
-# 	load_instance = True
+class TourSchema(SQLAlchemyAutoSchema):
+	class Meta:
+		model = Tour
+		include_relationships = False
+		load_instance = True
+		include_fk = True
+
+	id = fields.Integer(validate=validate_entry_id)
+	name = fields.String(validate=validate.Length(min=5, max=20))
+	email = fields.String(validate=validate.Email())
+	price = fields.Integer(validate=validate.Range(min=100, max=1000000))
+	photoUrl = fields.String(validate=validate.URL())
+	is_available = fields.Integer()
+
+
+class OrderSchema(SQLAlchemyAutoSchema):
+	class Meta:
+		model = Order
+		include_relationships = False
+		load_instance = True
+		include_fk = True
+
+	# quantity = fields.Integer(validate=validate.Range(1, 100))
+	# ordering_date = fields.Date()
+	#
+
+
+class UserSchema(SQLAlchemyAutoSchema):
+	class Meta:
+		model = User
+		include_relationships = False
+		load_instance = True
+		include_fk = True
 
 
 Base.metadata.create_all(bind=engine)
