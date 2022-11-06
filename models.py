@@ -3,6 +3,7 @@ from uuid import UUID
 from flask_marshmallow.sqla import SQLAlchemyAutoSchema
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base, scoped_session
+from sqlalchemy.sql.functions import now
 from sqlalchemy_serializer import SerializerMixin
 from marshmallow_sqlalchemy import *
 from marshmallow import fields, validate
@@ -27,10 +28,18 @@ def validate_entry_id(entry, entry_id):
 	return True
 
 
-# def validate_tour_status(num):
-# 	if num != "1" and num != "0":
-# 		return False
-# 	return True
+def validate_tour_status(num):
+	if num == "1" and num == "0":
+		return True
+	return False
+
+
+def validate_order_status(status):
+	if status not in ["approved", "received", "placed"]:
+		return False
+	return True
+
+
 class User(Base, CustomSerializerMixin):
 	__tablename__ = "user"
 
@@ -61,7 +70,7 @@ class Order(Base, CustomSerializerMixin):
 
 	serialize_only = {'id', 'quantity', 'ordering_date', 'status', 'tour_id', 'user_id'}
 
-	id = Column('id', Integer, primary_key=True)
+	id = Column('id', Integer, primary_key=True, autoincrement=True)
 	quantity = Column('quantity', Integer, nullable=False)
 	ordering_date = Column('ordering_date', Date, nullable=False)
 	status = Column('status', String(45), nullable=False)
@@ -90,10 +99,9 @@ class TourSchema(SQLAlchemyAutoSchema):
 
 	id = fields.Integer(validate=validate_entry_id)
 	name = fields.String(validate=validate.Length(min=5, max=20))
-	email = fields.String(validate=validate.Email())
 	price = fields.Integer(validate=validate.Range(min=100, max=1000000))
 	photoUrl = fields.String(validate=validate.URL())
-	is_available = fields.Integer()
+	is_available = fields.Boolean(data_key="is_available")
 
 
 class OrderSchema(SQLAlchemyAutoSchema):
@@ -103,9 +111,12 @@ class OrderSchema(SQLAlchemyAutoSchema):
 		load_instance = True
 		include_fk = True
 
-	# quantity = fields.Integer(validate=validate.Range(1, 100))
-	# ordering_date = fields.Date()
-	#
+
+	quantity = fields.Integer(validate=validate.Range(1, 100))
+	ordering_date = fields.Date(format="iso")
+	status = fields.String(validate=validate_order_status)
+	tour_id = fields.Integer()
+	user_id = fields.Integer()
 
 
 class UserSchema(SQLAlchemyAutoSchema):
@@ -114,6 +125,14 @@ class UserSchema(SQLAlchemyAutoSchema):
 		include_relationships = False
 		load_instance = True
 		include_fk = True
+
+	is_admin = fields.Boolean(data_key="is_admin")
+	firstname = fields.String(validate=validate.Length(min=1, max=20))
+	username = fields.String(validate=validate.Length(min=5, max=15))
+	lastname = fields.String(validate=validate.Length(min=1, max=25))
+	email = fields.String(validate=validate.Email())
+	password = fields.String(validate=validate.Length(min=8, max=25))
+	phone = fields.Integer(data_key="phone")
 
 
 Base.metadata.create_all(bind=engine)
