@@ -26,6 +26,7 @@ def update_tour():
         else:
             args = request.get_json()
             tour_schema = TourSchema()
+            tour_check = tour_schema.load(args, session=session)
             session.query(Tour).filter(Tour.id == tour_id).update(args)
             session.commit()
             new_tour = session.query(Tour).filter(Tour.id == tour_id).one()
@@ -200,13 +201,14 @@ def update_user(user_id):
         else:
             args = request.get_json()
             user_schema = UserSchema()
+            user1 = user_schema.load(args, session=session)
             session.query(User).filter(User.id == user_id).update(args)
+
             session.commit()
             user = session.query(User).filter(User.id == user_id).one().to_dict()
             return user_schema.dump(user), 200
     except ValidationError as err:
-        # return str(err)
-        return {"message": "Not correct data provided"}, 400
+        return jsonify(err.messages), 400
 
 
 @app.route('/user/login', methods=['GET'])
