@@ -264,6 +264,54 @@ paths:
       security:
         - api_key: []
   /order/{orderId}:
+    put:
+      tags:
+        - order
+      summary: Update an existing tour
+      description: Update an existing tour by Id
+      operationId: updateOrder
+      parameters:
+        - name: orderId
+          in: path
+          description: ID of order that needs to be fetched
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        description: Update an existent tour in the store
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tour'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/Tour'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Tour'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Tour not found
+        '405':
+          description: Validation exception
+      security:
+        - agency_auth:
+            - write:tours
+            - read:tours
+
     get:
       tags:
         - order
@@ -315,6 +363,35 @@ paths:
           description: Order not found
       security:
         - api_key: []
+        
+  /order/findByUserId:
+    get:
+      tags:
+        - order
+      summary: Find purchase order by user`s ID
+      operationId: getOrderByUserId
+      parameters:
+        - name: userId
+          in: query
+          description: ID of order that needs to be fetched
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Order not found
   /user:
     post:
       tags:
@@ -402,20 +479,80 @@ paths:
       responses:
         default:
           description: successful operation
-  /user/{username}:
+  /user/all:
     get:
       tags:
         - user
-      summary: Get user by user name
-      description: ''
-      operationId: getUserByName
+      summary: Returns all users
+      description: Returns a map of status codes to quantities
+      operationId: getAllUsers
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        
+      security:
+        - api_key: []
+  /user/findByUsername:
+    get:
+      tags:
+        - tour
+      summary: Find tour by ID
+      description: Returns a single tour
+      operationId: getUserByUsername
       parameters:
         - name: username
-          in: path
-          description: 'The name that needs to be fetched. Use user1 for testing. '
+          in: query
+          description: ID of tour to return
           required: true
           schema:
-            type: string
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+        '403':
+          description: access denied
+      security:
+        - api_key: []
+        - agency_auth:
+            - write:tours
+            - read:tours
+      
+  /user/{id}:
+    get:
+      tags:
+        - user
+      summary: Find tour by ID
+      description: Returns a single tour
+      operationId: getUserById
+      parameters:
+        - name: id
+          in: path
+          description: ID of tour to return
+          required: true
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: successful operation
@@ -427,14 +564,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
         '400':
-          description: Invalid username supplied
+          description: Invalid ID supplied
         '404':
           description: User not found
-          
-        '403':
-          description: Access denied
-        '405':
-          description: Invalid input
+      security:
+        - api_key: []
+        - agency_auth:
+            - write:tours
+            - read:tours
     put:
       tags:
         - user
@@ -442,7 +579,7 @@ paths:
       description: This can only be done by the logged in user.
       operationId: updateUser
       parameters:
-        - name: username
+        - name: id
           in: path
           description: name that need to be deleted
           required: true
@@ -481,7 +618,7 @@ paths:
       description: This can only be done by the logged in user.
       operationId: deleteUser
       parameters:
-        - name: username
+        - name: id
           in: path
           description: The name that needs to be deleted
           required: true
@@ -583,9 +720,6 @@ components:
         email:
           type: string
           example: john@email.com
-        password:
-          type: string
-          example: '12345'
         phone:
           type: string
           example: '12345'
