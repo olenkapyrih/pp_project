@@ -3,7 +3,10 @@ from flask_sqlalchemy import SQLAlchemy
 from models import *
 import json
 from flask_bcrypt import generate_password_hash
+from flask_httpauth import HTTPBasicAuth
+from werkzeug.security import generate_password_hash, check_password_hash
 
+auth = HTTPBasicAuth()
 app = Flask(__name__)
 from flask_marshmallow import *
 from marshmallow import Schema, post_load, ValidationError, validate
@@ -11,9 +14,18 @@ from marshmallow import Schema, post_load, ValidationError, validate
 Session = sessionmaker(bind=engine)
 session = Session()
 '''queries dealing with tours table'''
-
+@auth.verify_password
+def veryfy_password(username,password):
+    session=Session()
+    users=session.query(User).filter(User.username==username)
+    if users.count()==0:
+        return False
+    if not check_password_hash(users.first().password,password):
+        return False
+    return True
 
 @app.route('/tour', methods=['PUT'])
+@auth.login_required
 def update_tour():
     arg = request.args
 
@@ -21,6 +33,12 @@ def update_tour():
     #     return {"message": "Incorrect input"}, 400
     try:
         tour_id = arg.get("tour_id")
+        if not veryfy_password(request.authorization.username, request.authorization.password):
+            return "Not logged in", 401
+        user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+        if user1.is_admin == False:
+            return "Access denieddd", 403
         if not validate_entry_id(Tour, tour_id):
             return {"message": "Tour with such id does not exist"}, 404
         else:
@@ -37,9 +55,16 @@ def update_tour():
 
 
 @app.route('/tour', methods=['POST'])
+@auth.login_required
 def create_tour():
     args = request.get_json()
     try:
+        if not veryfy_password(request.authorization.username, request.authorization.password):
+            return "Not logged in", 401
+        user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+        if user1.is_admin == False:
+            return "Access denieddd", 403
         tour_schema = TourSchema()
         tour = tour_schema.load(args, session=session)
         session.add(tour)
@@ -56,8 +81,16 @@ def find_all_tours():
 
 
 @app.route('/tour/findByID/<int:tour_id>', methods=['GET'])
+
+@auth.login_required
 def find_tour_by_id(tour_id):
     # args = request.args
+    if not veryfy_password(request.authorization.username, request.authorization.password):
+        return "Not logged in", 401
+    user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+    if user1.is_admin == False:
+        return "Access denieddd", 403
     if validate_entry_id(Tour, tour_id):
         tour = session.query(Tour).filter(Tour.id == tour_id).first()
         tour_schema = TourSchema()
@@ -78,7 +111,14 @@ def find_tour_by_status():
 
 
 @app.route('/tour/<int:tour_id>', methods=['DELETE'])
+@auth.login_required
 def delete_tour(tour_id):
+    if not veryfy_password(request.authorization.username, request.authorization.password):
+        return "Not logged in", 401
+    user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+    if user1.is_admin == False:
+        return "Access denieddd", 403
     # args = request.args
     # tour_id = args.get('tour_id')
     if validate_entry_id(Tour, tour_id):
@@ -96,59 +136,111 @@ def delete_tour(tour_id):
 
 
 @app.route('/order', methods=['POST'])
+@auth.login_required
 def create_order():
     args = request.get_json()
     try:
         order_schema = OrderSchema()
         order = order_schema.load(args, session=session)
-        if validate_entry_id(Tour, order.tour_id) and validate_entry_id(User, order.user_id):
-            session.add(order)
-            session.commit()
-            return order_schema.dump(order), 200
-        else:
-            return {"message": "Some of provided ids does not exist"}, 404
+
+        if (session.query(User).filter(User.id == order.user_id).count() == 0):
+            return {"message": "User doesn't exists"}, 404
+        if (session.query(Tour).filter(Tour.id == order.tour_id).count() == 0):
+            return {"message": "Tour doesn't exists"}, 404
+        if not veryfy_password(request.authorization.username, request.authorization.password):
+            return "Not logged in", 401
+
+        user = session.query(User).filter(User.id ==order.user_id).first()
+        #user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+        if  user.username != request.authorization.username :
+            return "Access denieddd", 403
+
+        session.add(order)
+        session.commit()
+        return order_schema.dump(order), 200
+
     except ValidationError as err:
         return {"message": "Not correct data provided"}, 400
 
 
 @app.route('/order', methods=["PUT"])
+@auth.login_required
 def update_order():
     arg = request.args
     try:
         order_id = arg.get("order_id")
-        if not validate_entry_id(Order, order_id):
-            return {"message": "Order with such id does not exist"}, 404
-        else:
-            args = request.get_json()
-            order_schema = OrderSchema()
-            updated_order = order_schema.load(args, session=session)
-            if validate_entry_id(Tour, updated_order.tour_id) and validate_entry_id(User, updated_order.user_id):
-                if validate_order_status(updated_order.status):
-                    session.query(Order).filter(Order.id == order_id).update(args)
-                    session.commit()
-                    new_order = session.query(Order).filter(Order.id == order_id).one()
-                    return order_schema.dump(new_order), 200
-            return {"message": "Some of provided ids does not exist"}, 404
+
+        if (session.query(Order).filter(Order.id == order_id).count() == 0):
+            return {"message": "Order doesn't exists"}, 404
+
+        args = request.get_json()
+        order_schema = OrderSchema()
+        updated_order = order_schema.load(args, session=session)
+        if not veryfy_password(request.authorization.username, request.authorization.password):
+            return "Not logged in", 401
+
+        if (session.query(User).filter(User.id == updated_order.user_id).count() == 0):
+            return "User doesn't exists", 405
+        user = session.query(User).filter(User.id == updated_order.user_id).first()
+        #user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+        if  user.username != request.authorization.username :
+            return "Access denieddd", 403
+        if (session.query(User).filter(User.id == updated_order.user_id).count() == 0):
+            return {"message": "User doesn't exists"}, 404
+        if (session.query(Tour).filter(Tour.id == updated_order.tour_id).count() == 0):
+            return {"message": "Tour doesn't exists"}, 404
+        session.query(Order).filter(Order.id == order_id).update(args)
+        session.commit()
+        new_order = session.query(Order).filter(Order.id == order_id).one()
+        return order_schema.dump(new_order), 200
+
     except ValidationError as err:
-        # return str(err)
-        return {"message": "Not correct data provided"}, 400
+        return jsonify(err.messages), 400
 
 
 @app.route('/order/findAll', methods=['GET'])
+@auth.login_required
 def find_all_orders():
+    if not veryfy_password(request.authorization.username, request.authorization.password):
+        return "Not logged in", 401
+    user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+    if  user1.is_admin == False:
+        return "Access denieddd", 403
     orders = session.query(Order)
     return json.dumps([i.to_dict() for i in orders])
 
 
 @app.route('/order/findByID/<int:order_id>', methods=['GET'])
+@auth.login_required
 def find_order_by_id(order_id):
     # args = request.args
     # order_id = args.get('order_id')
-    if validate_entry_id(Order, order_id):
+    try:
+        if (session.query(Order).filter(Order.id == order_id).count() == 0):
+            return {"message": "Order doesn't exists"}, 404
         order = session.query(Order).filter(Order.id == order_id).first()
-        order_schema = OrderSchema()
-        return order_schema.dump(order), 200
-    return {"message": "Order with such id does not exist"}, 404
+        if not veryfy_password(request.authorization.username, request.authorization.password):
+            return "Not logged in", 401
+
+        if (session.query(User).filter(User.id == order.user_id).count() == 0):
+            return "User doesn't exists", 405
+        user = session.query(User).filter(User.id == order.user_id).first()
+        #user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+        if  user.username != request.authorization.username :
+            return "Access denieddd", 403
+        if (session.query(Order).filter(Order.id == order_id).count() == 0):
+            return "Order doesn't exists", 405
+        if validate_entry_id(Order, order_id):
+            order = session.query(Order).filter(Order.id == order_id).first()
+            order_schema = OrderSchema()
+            return order_schema.dump(order), 200
+    except ValidationError:
+        return {"message": "Invalid input"}, 400
+
 
 
 @app.route('/order/findByUserID', methods=['GET'])
@@ -165,8 +257,22 @@ def find_order_by_user_id():
 
 
 @app.route('/order/<int:order_id>', methods=['DELETE'])
+@auth.login_required
 def delete_order(order_id):
     try:
+        if (session.query(Order).filter(Order.id == order_id).count() == 0):
+            return {"message": "Order doesn't exists"}, 404
+        order = session.query(Order).filter(Order.id == order_id).first()
+        if not veryfy_password(request.authorization.username, request.authorization.password):
+            return "Not logged in", 401
+
+        if (session.query(User).filter(User.id == order.user_id).count() == 0):
+            return "User doesn't exists", 405
+        user = session.query(User).filter(User.id == order.user_id).first()
+        #user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+        if  user.username != request.authorization.username :
+            return "Access denieddd", 403
         if validate_entry_id(Order, order_id):
             session.query(Order).filter(Order.id == order_id).delete()
             session.commit()
@@ -194,10 +300,21 @@ def create_user():
 
 
 @app.route('/user/<int:user_id>', methods=['PUT'])
+@auth.login_required
 def update_user(user_id):
     try:
         if not validate_entry_id(User, user_id):
             return {"message": "User with such id does not exist"}, 404
+        if not veryfy_password(request.authorization.username, request.authorization.password):
+            return "Not logged in", 401
+
+        if (session.query(User).filter(User.id == user_id).count() == 0):
+            return "User doesn't exists", 405
+        user = session.query(User).filter(User.id == user_id).first()
+        #user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+        if  user.username != request.authorization.username :
+            return "Access denieddd", 403
         else:
             args = request.get_json()
             user_schema = UserSchema()
@@ -234,28 +351,64 @@ def find_user_by_username():
 
 
 @app.route('/user/findUserByID/<int:user_id>', methods=['GET'])
+@auth.login_required
 def find_user_by_id(user_id):
-    if validate_entry_id(User, user_id):
+    try:
+        if not veryfy_password(request.authorization.username, request.authorization.password):
+            return "Not logged in", 401
+
+        if (session.query(User).filter(User.id == user_id).count() == 0):
+            return "User doesn't exists", 405
+        user = session.query(User).filter(User.id == user_id).first()
+        user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+        if  user.username != request.authorization.username and user1.is_admin == False:
+            return "Access denieddd", 403
         user = session.query(User).filter(User.id == user_id).first()
         user_schema = UserSchema()
-        return user_schema.dump(user), 200
-    return {"message": "User with such id does not exist"}, 404
+
+        return user_schema.dumps(user)
+    except ValidationError as err:
+        return err.messages
+
+
+
 
 
 @app.route('/user/findAll', methods=['GET'])
+@auth.login_required
 def find_all_users():
+    if not veryfy_password(request.authorization.username, request.authorization.password):
+        return "Not logged in", 401
+    user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+    if  user1.is_admin == False:
+        return "Access denieddd", 403
     users = session.query(User)
     return json.dumps([i.to_dict() for i in users])
 
 
 @app.route('/user/<int:user_id>', methods=['DELETE'])
+@auth.login_required
 def delete_user(user_id):
     # args = request.args
     # tour_id = args.get('tour_id')
+    if not validate_entry_id(User, user_id):
+        return {"message": "User with such id does not exist"}, 404
+    if not veryfy_password(request.authorization.username, request.authorization.password):
+        return "Not logged in", 401
+
+    if (session.query(User).filter(User.id == user_id).count() == 0):
+        return "User doesn't exists", 405
+    user = session.query(User).filter(User.id == user_id).first()
+   # user1 = session.query(User).filter(User.username == request.authorization.username).first()
+
+    if user.username != request.authorization.username :
+        return "Access denieddd", 403
     if validate_entry_id(User, user_id):
         # return {"message": "Tour with such id does not exist"}, 400
         session.query(Order).filter(Order.user_id == user_id).delete()
         session.query(User).filter(User.id == user_id).delete()
         session.commit()
         return {"message": "User deleted successfully"}, 200
-    return {"message": "User with such id does not exist"}, 404
+
