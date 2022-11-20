@@ -9,7 +9,10 @@ from marshmallow_sqlalchemy import *
 from marshmallow import fields, validate
 from validators import *
 
-engine = create_engine("mysql+pymysql://root:root1234@localhost:3306/tour")
+
+source = open("E:\PythonProjects\pp_project\connect_string.txt", "r")
+engine = create_engine(source.readline())
+# engine = create_engine("mysql+pymysql://root:root1234@localhost:3306/tour")
 SessionFactory = sessionmaker(bind=engine)
 Session = scoped_session(SessionFactory)
 Base = declarative_base()

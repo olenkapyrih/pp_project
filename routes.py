@@ -1,3 +1,4 @@
+from flask import current_app as app
 from flask import request, Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from models import *
@@ -7,7 +8,8 @@ from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
 
 auth = HTTPBasicAuth()
-app = Flask(__name__)
+
+
 from flask_marshmallow import *
 from marshmallow import Schema, post_load, ValidationError, validate
 
@@ -63,7 +65,7 @@ def create_tour():
             return "Not logged in", 401
         user1 = session.query(User).filter(User.username == request.authorization.username).first()
 
-        if user1.is_admin == False:
+        if int(user1.is_admin) == 0:
             return "Access denieddd", 403
         tour_schema = TourSchema()
         tour = tour_schema.load(args, session=session)
@@ -287,15 +289,19 @@ def delete_order(order_id):
 
 @app.route('/user', methods=['POST'])
 def create_user():
+    session_ = Session()
     args = request.get_json()
     try:
         user_schema = UserSchema()
-        user = user_schema.load(args, session=session)
+        user = user_schema.load(args, session=session_)
         user.password = generate_password_hash(user.password)
-        session.add(user)
-        session.commit()
-        return user_schema.dump(user), 200
+        session_.add(user)
+        session_.commit()
+        res = user_schema.dump(user)
+        session_.close()
+        return res, 200
     except ValidationError as err:
+        session_.close()
         return {"message": "Not correct data provided"}, 400
 
 
@@ -340,34 +346,34 @@ def logout():
 
 @app.route('/user/findUserByUsername', methods=['GET'])
 def find_user_by_username():
+    session_ = Session()
     args = request.args
     username = args.get("username")
-    if session.query(User).filter(User.username == username) != 0:
-        users = session.query(User).filter(User.username == username)
+    if session_.query(User).filter(User.username == username).count() != 0:
+        user = session_.query(User).filter(User.username == username).first()
         user_schema = UserSchema()
-        return f"{[user_schema.dump(i) for i in users]}", 200
-    return {"message": "User with such id does not exist"}, 404
+        res = user_schema.dump(user)
+        session_.close()
+        return res, 200
+    return {"message": username}, 404
 
 
 
-@app.route('/user/findUserByID/<int:user_id>', methods=['GET'])
+@app.route('/user/findUserByID/', methods=['GET'])
 @auth.login_required
-def find_user_by_id(user_id):
+def find_user_by_id():
+    user_id = request.args.get('user_id')
+    session = Session()
     try:
-        if not veryfy_password(request.authorization.username, request.authorization.password):
-            return "Not logged in", 401
-
-        if (session.query(User).filter(User.id == user_id).count() == 0):
-            return "User doesn't exists", 405
+        # if not veryfy_password(request.authorization.username, request.authorization.password):
+        #     return "Not logged in", 401
+        #
+        # if (session.query(User).filter(User.id == user_id).count() == 0):
+        #     return "User doesn't exists", 405
+        user_schema = UserSchema()
         user = session.query(User).filter(User.id == user_id).first()
         user1 = session.query(User).filter(User.username == request.authorization.username).first()
-
-        if  user.username != request.authorization.username and user1.is_admin == False:
-            return "Access denieddd", 403
-        user = session.query(User).filter(User.id == user_id).first()
-        user_schema = UserSchema()
-
-        return user_schema.dumps(user)
+        return user_schema.dump(user), 200
     except ValidationError as err:
         return err.messages
 
@@ -378,14 +384,19 @@ def find_user_by_id(user_id):
 @app.route('/user/findAll', methods=['GET'])
 @auth.login_required
 def find_all_users():
+
     if not veryfy_password(request.authorization.username, request.authorization.password):
         return "Not logged in", 401
-    user1 = session.query(User).filter(User.username == request.authorization.username).first()
+    session_ = Session()
+    user1 = session_.query(User).filter(User.username == request.authorization.username).first()
 
-    if  user1.is_admin == False:
+    if int(user1.is_admin) == 0:
+        session_.close()
         return "Access denieddd", 403
-    users = session.query(User)
-    return json.dumps([i.to_dict() for i in users])
+    users = session_.query(User)
+    user_schema = UserSchema()
+    session_.close()
+    return jsonify([user_schema.dump(i) for i in users])
 
 
 @app.route('/user/<int:user_id>', methods=['DELETE'])

@@ -2,8 +2,9 @@ from sqlalchemy.orm import sessionmaker
 from order_status import Status
 from models import *
 
-
-engine = create_engine('mysql+pymysql://root:root1234@localhost:3306/tour')
+source = open("E:\PythonProjects\pp_project\connect_string.txt", "r")
+engine = create_engine(source.readline())
+# engine = create_engine('mysql+pymysql://root:root1234@localhost:3306/tour')
 Base.metadata.create_all(bind=engine)
 Session = sessionmaker(bind=engine)
 session = Session()
