@@ -305,9 +305,10 @@ def create_user():
         return {"message": "Not correct data provided"}, 400
 
 
-@app.route('/user/<int:user_id>', methods=['PUT'])
+@app.route('/user/', methods=['PUT'])
 @auth.login_required
-def update_user(user_id):
+def update_user():
+    user_id = request.args.get("user_id")
     try:
         if not validate_entry_id(User, user_id):
             return {"message": "User with such id does not exist"}, 404
