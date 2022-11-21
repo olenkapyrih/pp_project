@@ -1,13 +1,9 @@
 from uuid import UUID
-# from flask import fields
-from flask_marshmallow.sqla import SQLAlchemyAutoSchema
 from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker, relationship, declarative_base, scoped_session
-from sqlalchemy.sql.functions import now
+from sqlalchemy.orm import sessionmaker, declarative_base, scoped_session
 from sqlalchemy_serializer import SerializerMixin
 from marshmallow_sqlalchemy import *
 from marshmallow import fields, validate
-from validators import *
 
 
 source = open("E:\PythonProjects\pp_project\connect_string.txt", "r")

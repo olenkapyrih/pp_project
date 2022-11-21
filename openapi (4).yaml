@@ -506,7 +506,7 @@ paths:
   /user/findByUsername:
     get:
       tags:
-        - tour
+        - user
       summary: Find tour by ID
       description: Returns a single tour
       operationId: getUserByUsername
