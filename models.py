@@ -1,15 +1,14 @@
 from uuid import UUID
-# from flask import fields
-from flask_marshmallow.sqla import SQLAlchemyAutoSchema
 from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker, relationship, declarative_base, scoped_session
-from sqlalchemy.sql.functions import now
+from sqlalchemy.orm import sessionmaker, declarative_base, scoped_session
 from sqlalchemy_serializer import SerializerMixin
 from marshmallow_sqlalchemy import *
 from marshmallow import fields, validate
-from validators import *
 
-engine = create_engine("mysql+pymysql://root:2004@localhost:3306/ppdb")
+
+source = open("E:\PythonProjects\pp_project\connect_string.txt", "r")
+engine = create_engine(source.readline())
+# engine = create_engine("mysql+pymysql://root:root1234@localhost:3306/tour")
 SessionFactory = sessionmaker(bind=engine)
 Session = scoped_session(SessionFactory)
 Base = declarative_base()
@@ -48,8 +47,13 @@ def validate_order_status(status):
     if status not in ["approved", "received", "placed"]:
         return False
     return True
+def validate_username(username1):
 
-
+    if not (Session.query(User).filter(User.username==username1).count()==0):
+        return False
+    if len(username1) < 1 or len(username1)>20:
+        return False
+    return True
 class User(Base, CustomSerializerMixin):
     __tablename__ = "user"
 
@@ -107,7 +111,7 @@ class TourSchema(SQLAlchemyAutoSchema):
         load_instance = True
         include_fk = True
 
-    id = fields.Integer(validate=validate_entry_id)
+    #id = fields.Integer(validate=validate_entry_id)
     name = fields.String(validate=validate.Length(min=5, max=20))
     price = fields.Integer(validate=validate.Range(min=100, max=1000000))
     photoUrl = fields.String(validate=validate.URL())
@@ -117,9 +121,9 @@ class TourSchema(SQLAlchemyAutoSchema):
 class OrderSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Order
-        include_relationships = False
+       # include_relationships = False
         load_instance = True
-        include_fk = True
+        #include_fk = True
 
     quantity = fields.Integer(validate=validate.Range(1, 100))
     ordering_date = fields.Date(format="iso")
@@ -137,7 +141,7 @@ class UserSchema(SQLAlchemyAutoSchema):
 
     is_admin = fields.Boolean(data_key="is_admin")
     firstname = fields.String(validate=validate.Length(min=1, max=20))
-    username = fields.String(validate=validate.Length(min=5, max=15))
+    username = fields.String(validate=validate_username)
     lastname = fields.String(validate=validate.Length(min=1, max=25))
     email = fields.String(validate=validate.Email())
     password = fields.String(validate=validate.Length(min=8, max=25))
